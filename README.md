@@ -11,6 +11,7 @@ This library enables you to run the same prompts against multiple LLM providers 
 - Run the same prompt against multiple providers simultaneously
 - Support for tool use across providers
 - Error handling and graceful degradation
+- AWS Lambda integration for serverless deployment
 
 ## Installation
 
@@ -198,6 +199,27 @@ Run the tests with:
 ```bash
 python -m unittest discover -s src/tests
 ```
+
+## AWS Lambda Deployment
+
+A Lambda handler is included for easy serverless deployment:
+
+```python
+from llm_compatibility import run_with_multiple_providers_sync
+
+def lambda_handler(event, context):
+    # Configure with environment variables
+    # Run against multiple providers
+    # Return results
+```
+
+Configure with environment variables:
+
+- `SYSTEM_PROMPT`: System prompt instructions
+- `PROVIDERS`: Comma-separated list of providers
+- `API_KEY_OPENAI`, `API_KEY_CLAUDE`, etc.: API keys for providers
+
+See [Lambda Deployment Guide](src/examples/lambda_deployment.md) for details.
 
 ## Contributing
 
