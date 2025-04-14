@@ -12,7 +12,7 @@ async def run_with_multiple_providers(
     temperature: float = 0.7,
 ) -> Dict[str, Any]:
     """
-    Run the same prompt against multiple LLM providers and return the results.
+    Run the same prompt against multiple LLM providers in parallel and return the results.
     
     Args:
         system_prompt: The system prompt/instructions
@@ -31,9 +31,8 @@ async def run_with_multiple_providers(
     api_keys = api_keys or {}
     tools = tools or []
     
-    results = {}
-    
-    for provider in providers:
+    async def run_provider(provider: str) -> tuple[str, str]:
+        """Run a single provider and return the result."""
         if provider not in model_names:
             raise ValueError(f"No model name specified for provider: {provider}")
             
@@ -50,11 +49,14 @@ async def run_with_multiple_providers(
         
         try:
             result = await Runner.run(agent, input=input_message)
-            results[provider] = result.final_output
+            return provider, result.final_output
         except Exception as e:
-            results[provider] = f"Error: {str(e)}"
-            
-    return results
+            return provider, f"Error: {str(e)}"
+    
+    tasks = [run_provider(provider) for provider in providers]
+    results_list = await asyncio.gather(*tasks)
+    
+    return {provider: result for provider, result in results_list}
 
 def run_with_multiple_providers_sync(
     system_prompt: str,

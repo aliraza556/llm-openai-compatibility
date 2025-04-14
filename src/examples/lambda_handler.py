@@ -29,7 +29,7 @@ def get_env_dict(key_prefix: str, keys: List[str]) -> Dict[str, str]:
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
-    AWS Lambda handler function.
+    AWS Lambda handler function that runs prompts against multiple LLM providers in parallel.
     
     Environment Variables:
         SYSTEM_PROMPT: The system prompt/instructions
@@ -53,7 +53,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         }
     
     Returns:
-        Dictionary with provider responses
+        Dictionary with provider responses from all providers run in parallel
     """
 
     system_prompt = os.environ.get("SYSTEM_PROMPT", "You are a helpful assistant that provides weather information.")

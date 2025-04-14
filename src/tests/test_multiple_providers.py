@@ -67,7 +67,7 @@ class TestLLMCompatibility(unittest.TestCase):
     
     @patch("agents.Runner.run")
     async def test_run_with_multiple_providers(self, mock_run):
-        """Test run_with_multiple_providers function."""
+        """Test run_with_multiple_providers function with parallel execution."""
 
         mock_result = MagicMock()
         mock_result.final_output = "Hello from the LLM!"
@@ -106,7 +106,7 @@ class TestLLMCompatibility(unittest.TestCase):
         
     @patch("agents.Runner.run")
     async def test_error_handling(self, mock_run):
-        """Test error handling in run_with_multiple_providers."""
+        """Test error handling in parallel run_with_multiple_providers."""
 
         def side_effect(agent, input):
             if "claude" in str(agent.model):
