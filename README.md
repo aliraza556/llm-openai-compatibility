@@ -10,6 +10,7 @@ This library enables you to run the same prompts against multiple LLM providers 
 - Unified interface for creating agents with different backends
 - Run the same prompt against multiple providers simultaneously
 - Support for tool use across providers
+- Support for JSON-defined tools with callback URLs
 - Error handling and graceful degradation
 - AWS Lambda integration for serverless deployment
 
@@ -89,6 +90,90 @@ results = run_with_multiple_providers_sync(
 for provider, response in results.items():
     print(f"\n--- {provider.upper()} ---")
     print(response)
+```
+
+### Using JSON-Defined Tools
+
+You can define tools as JSON objects instead of Python functions:
+
+```python
+from llm_compatibility import run_with_multiple_providers_sync, create_tools_from_json
+
+# Define tools as JSON
+tools_json = [
+    {
+        "name": "get_weather",
+        "description": "Get the current weather for a city.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "city": {
+                    "type": "string",
+                    "description": "The city to get weather for"
+                },
+                "country": {
+                    "type": "string",
+                    "description": "The country (optional)"
+                }
+            },
+            "required": ["city"]
+        }
+    },
+    {
+        "name": "calculate",
+        "description": "Perform a calculation.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "expression": {
+                    "type": "string",
+                    "description": "The mathematical expression to evaluate"
+                }
+            },
+            "required": ["expression"]
+        }
+    }
+]
+
+# Create function tools from JSON definitions
+tools = create_tools_from_json(tools_json)
+
+# Run with multiple providers
+results = run_with_multiple_providers_sync(
+    system_prompt="You are an assistant that can provide weather info and calculate expressions.",
+    messages=[{"role": "user", "content": "What's the weather in Paris? Also, what's 137 * 429?"}],
+    providers=["openai", "claude"],
+    model_names={"openai": "gpt-4o", "claude": "claude-3-haiku"},
+    tools=tools
+)
+```
+
+#### Using Callback URLs
+
+You can also define tools with callback URLs that will be called when the tool is invoked:
+
+```python
+callback_tool_json = {
+    "name": "search_web",
+    "description": "Search the web for information.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "query": {
+                "type": "string",
+                "description": "The search query"
+            }
+        },
+        "required": ["query"]
+    },
+    "callback_url": "https://api.example.com/search"
+}
+
+# Create the tool
+search_tool = create_tools_from_json(callback_tool_json)[0]
+
+# When the tool is called, it will POST the parameters to the callback URL
+# and return the response
 ```
 
 ## Documentation
@@ -202,15 +287,22 @@ python -m unittest discover -s src/tests
 
 ## AWS Lambda Deployment
 
-A Lambda handler is included for easy serverless deployment:
+A Lambda handler is included for easy serverless deployment. It supports passing tools as JSON:
 
 ```python
-from llm_compatibility import run_with_multiple_providers_sync
+from llm_compatibility import run_with_multiple_providers_sync, create_tools_from_json
 
 def lambda_handler(event, context):
-    # Configure with environment variables
+    # Get JSON tools from event or environment variables
+    json_tools = event.get("json_tools") or os.environ.get("JSON_TOOLS")
+
+    if json_tools:
+        tools = create_tools_from_json(json_tools)
+    else:
+        tools = [default_tool]
+
     # Run against multiple providers
-    # Return results
+    return results
 ```
 
 Configure with environment variables:
@@ -218,6 +310,7 @@ Configure with environment variables:
 - `SYSTEM_PROMPT`: System prompt instructions
 - `PROVIDERS`: Comma-separated list of providers
 - `API_KEY_OPENAI`, `API_KEY_CLAUDE`, etc.: API keys for providers
+- `JSON_TOOLS`: JSON string defining tools
 
 See [Lambda Deployment Guide](src/examples/lambda_deployment.md) for details.
 

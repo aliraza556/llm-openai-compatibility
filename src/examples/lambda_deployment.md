@@ -71,6 +71,7 @@ In the Lambda console, go to the "Configuration" tab, then "Environment variable
 | `API_KEY_OPENAI`    | "sk-..."                                    | API key for OpenAI                |
 | `API_KEY_CLAUDE`    | "sk-..."                                    | API key for Claude                |
 | `TEMPERATURE`       | "0.7"                                       | Temperature parameter             |
+| `JSON_TOOLS`        | "[{\"name\": \"get_weather\", ...}]"        | JSON tools definition (optional)  |
 
 ### 4. Configure Lambda Settings
 
@@ -86,6 +87,45 @@ You can test the function with a test event like:
   "message": "What's the weather in New York?",
   "providers": ["openai", "claude"],
   "temperature": 0.8
+}
+```
+
+Or with JSON-defined tools:
+
+```json
+{
+  "message": "What's the weather in Tokyo? Also, calculate 137 * 429.",
+  "providers": ["openai", "claude"],
+  "json_tools": [
+    {
+      "name": "get_weather",
+      "description": "Get the current weather for a city.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "city": {
+            "type": "string",
+            "description": "The city to get weather for"
+          }
+        },
+        "required": ["city"]
+      }
+    },
+    {
+      "name": "calculate",
+      "description": "Perform a calculation.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "expression": {
+            "type": "string",
+            "description": "The mathematical expression to evaluate"
+          }
+        },
+        "required": ["expression"]
+      }
+    }
+  ]
 }
 ```
 
@@ -110,7 +150,10 @@ To expose your Lambda as an API:
 To customize the Lambda function:
 
 1. Modify the `get_weather` tool or add more tools in the `lambda_handler.py` file
-2. Update the deployment package and redeploy
+2. Define tools using JSON in the `JSON_TOOLS` environment variable
+3. Pass JSON tool definitions in the event payload
+4. Create tools with callback URLs to external services
+5. Update the deployment package and redeploy
 
 ## Security Considerations
 

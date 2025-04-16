@@ -2,7 +2,7 @@ import json
 import os
 from typing import Dict, Any, List
 from agents import function_tool
-from llm_compatibility import run_with_multiple_providers_sync
+from llm_compatibility import run_with_multiple_providers_sync, create_tools_from_json
 
 @function_tool
 def get_weather(city: str) -> str:
@@ -44,12 +44,14 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         API_KEY_GEMINI: API key for Gemini
         API_KEY_DEEPSEEK: API key for Deepseek
         TEMPERATURE: Temperature parameter (default: 0.7)
+        JSON_TOOLS: JSON string defining tools (optional)
     
     Event Structure:
         {
             "message": "Optional user message to override USER_MESSAGE env var",
             "providers": ["optional", "provider", "list"],
-            "temperature": Optional temperature override
+            "temperature": Optional temperature override,
+            "json_tools": Optional JSON tools definition
         }
     
     Returns:
@@ -85,13 +87,20 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     
     messages = [{"role": "user", "content": user_message}]
     
+    json_tools = event.get("json_tools") or os.environ.get("JSON_TOOLS")
+    
+    if json_tools:
+        tools = create_tools_from_json(json_tools)
+    else:
+        tools = [get_weather]
+    
     results = run_with_multiple_providers_sync(
         system_prompt=system_prompt,
         messages=messages,
         providers=providers,
         model_names=model_names,
         api_keys=api_keys,
-        tools=[get_weather],
+        tools=tools,
         temperature=temperature,
     )
     
@@ -101,7 +110,9 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             "input": {
                 "message": user_message,
                 "providers": providers,
-                "temperature": temperature
+                "temperature": temperature,
+                "tools_count": len(tools),
+                "tools_names": [tool.__name__ for tool in tools]
             },
             "results": results
         })
@@ -110,11 +121,42 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     return response
 
 if __name__ == "__main__":
+    test_json_tools = [
+        {
+            "name": "get_weather",
+            "description": "Get the current weather for a city.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "city": {
+                        "type": "string",
+                        "description": "The city to get weather for"
+                    }
+                },
+                "required": ["city"]
+            }
+        },
+        {
+            "name": "calculate",
+            "description": "Perform a calculation.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "expression": {
+                        "type": "string",
+                        "description": "The mathematical expression to evaluate"
+                    }
+                },
+                "required": ["expression"]
+            }
+        }
+    ]
 
     test_event = {
-        "message": "What's the weather in New York?",
-        "providers": ["openai", "claude"]
+        "message": "What's the weather in New York? Also, what's 137 * 429?",
+        "providers": ["openai", "claude"],
+        "json_tools": test_json_tools
     }
     
     result = lambda_handler(test_event, None)
-    print(json.dumps(result, indent=2)) 
+    print(json.dumps(result, indent=2))
